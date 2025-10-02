@@ -120,12 +120,12 @@ export default function App() {
       {error && <p className="text-center text-red-600">Error: {error}</p>}
       {!loading && !error && (
         <>
-          <DataTable<ArtObject[]>
+          <DataTable
             value={artObjects}
             selection={currentPageSelection}
             onSelectionChange={onSelectionChange}
             dataKey="id"
-            selectionMode={rowClick ? "single" : "multiple"}
+            selectionMode={rowClick ? null : "multiple"}
             tableStyle={{ minWidth: "60rem" }}
             rowClassName={(data: ArtObject) =>
               selectedIds.has(data.id) ? "bg-blue-100" : "bg-white"
