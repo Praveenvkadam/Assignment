@@ -112,27 +112,25 @@ export default function App() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-4xl font-bold text-center mb-8">Art Collection</h1>
-
       <div className="mb-4 flex items-center gap-2">
         <label>Row click selection:</label>
         <InputSwitch checked={rowClick} onChange={(e) => setRowClick(e.value)} />
       </div>
-
       {loading && <p className="text-center">Loading...</p>}
       {error && <p className="text-center text-red-600">Error: {error}</p>}
-
       {!loading && !error && (
         <>
-          <DataTable
+          <DataTable<ArtObject[]>
             value={artObjects}
-            selectionMode={rowClick ? "single" : "multiple"}
             selection={currentPageSelection}
             onSelectionChange={onSelectionChange}
             dataKey="id"
+            selectionMode={rowClick ? "single" : "multiple"}
             tableStyle={{ minWidth: "60rem" }}
-            rowClassName={(data) =>
+            rowClassName={(data: ArtObject) =>
               selectedIds.has(data.id) ? "bg-blue-100" : "bg-white"
             }
+            cellSelection={false}
           >
             {!rowClick && (
               <Column
@@ -144,7 +142,7 @@ export default function App() {
                         <label>Number of rows to select:</label>
                         <InputText
                           type="number"
-                          value={selectLimit}
+                          value={selectLimit.toString()}
                           onChange={(e) =>
                             setSelectLimit(Number(e.target.value) || 0)
                           }
@@ -159,7 +157,7 @@ export default function App() {
                     </OverlayPanel>
                     <ChevronDown
                       size={18}
-                      className="cursor-pointer relative left-[50px]"
+                      className="cursor-pointer absolute left-[50px]"
                       onClick={(e) => overlayRef.current?.toggle(e)}
                     />
                   </div>
@@ -174,7 +172,6 @@ export default function App() {
             <Column field="date_start" header="Date Start" />
             <Column field="date_end" header="Date End" />
           </DataTable>
-
           <Paginator
             first={first}
             rows={rows}
