@@ -25,47 +25,36 @@ export default function App() {
   const [artObjects, setArtObjects] = useState<ArtObject[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
   const [first, setFirst] = useState<number>(0);
   const rows = 12;
   const [totalRecords, setTotalRecords] = useState<number>(0);
-
   const [rowClick, setRowClick] = useState<boolean>(false);
-  const [selectedArts, setSelectedArts] = useState<ArtObject[]>([]);
-
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const overlayRef = useRef<OverlayPanel>(null);
   const [selectLimit, setSelectLimit] = useState<number>(12);
-
   const currentPage = first / rows + 1;
 
-  const fetchArtworksPage = async (page: number, pageSize: number) => {
-    const response = await fetch(
-      `https://api.artic.edu/api/v1/artworks?page=${page}&limit=${pageSize}&fields=id,title,place_of_origin,artist_display,inscriptions,date_start,date_end`
-    );
-    const data = await response.json();
-
-    const artworks: ArtObject[] = data.data.map((item: any) => ({
-      id: item.id,
-      title: item.title || "Unknown",
-      place_of_origin: item.place_of_origin || "Unknown",
-      artist_display: item.artist_display || "Unknown",
-      inscriptions: item.inscriptions || "None",
-      date_start: item.date_start || 0,
-      date_end: item.date_end || 0,
-    }));
-
-    return { artworks, total: data.pagination.total };
-  };
-
   const fetchArtworks = async (page: number) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const { artworks, total } = await fetchArtworksPage(page, rows);
+      const response = await fetch(
+        `https://api.artic.edu/api/v1/artworks?page=${page}&limit=${rows}&fields=id,title,place_of_origin,artist_display,inscriptions,date_start,date_end`
+      );
+      const data = await response.json();
+      const artworks: ArtObject[] = data.data.map((item: any) => ({
+        id: item.id,
+        title: item.title || "Unknown",
+        place_of_origin: item.place_of_origin || "Unknown",
+        artist_display: item.artist_display || "Unknown",
+        inscriptions: item.inscriptions || "None",
+        date_start: item.date_start || 0,
+        date_end: item.date_end || 0,
+      }));
       setArtObjects(artworks);
-      setTotalRecords(total);
-      setLoading(false);
+      setTotalRecords(data.pagination.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
       setLoading(false);
     }
   };
@@ -78,22 +67,45 @@ export default function App() {
     setFirst(event.first);
   };
 
+  const onSelectionChange = (e: { value: ArtObject[] }) => {
+    const newSelectedIds = new Set(selectedIds);
+    e.value.forEach((row) => newSelectedIds.add(row.id));
+    artObjects.forEach((row) => {
+      if (!e.value.some((r) => r.id === row.id)) {
+        newSelectedIds.delete(row.id);
+      }
+    });
+    setSelectedIds(newSelectedIds);
+  };
+
+  const currentPageSelection = artObjects.filter((row) =>
+    selectedIds.has(row.id)
+  );
+
   const handleSelectFilteredRows = async () => {
     if (selectLimit <= 0) return;
-
-    let selected: ArtObject[] = [];
+    let selected: number[] = [];
     let page = 1;
     let hasMore = true;
-
     while (selected.length < selectLimit && hasMore) {
       const { artworks, total } = await fetchArtworksPage(page, rows);
-      selected = [...selected, ...artworks];
+      selected = [...selected, ...artworks.map((a) => a.id)];
       hasMore = page * rows < total;
       page++;
     }
-
-    setSelectedArts(selected.slice(0, selectLimit));
+    const newSelectedIds = new Set(selectedIds);
+    selected.slice(0, selectLimit).forEach((id) => newSelectedIds.add(id));
+    setSelectedIds(newSelectedIds);
     overlayRef.current?.hide();
+  };
+
+  const fetchArtworksPage = async (page: number, pageSize: number) => {
+    const response = await fetch(
+      `https://api.artic.edu/api/v1/artworks?page=${page}&limit=${pageSize}&fields=id`
+    );
+    const data = await response.json();
+    const artworks: ArtObject[] = data.data.map((item: any) => ({ id: item.id } as ArtObject));
+    return { artworks, total: data.pagination.total };
   };
 
   return (
@@ -112,15 +124,13 @@ export default function App() {
         <>
           <DataTable
             value={artObjects}
-            selectionMode={rowClick ? "single" : undefined}
-            selection={selectedArts}
-            onSelectionChange={(e) => setSelectedArts(e.value)}
+            selectionMode={rowClick ? "single" : "multiple"}
+            selection={currentPageSelection}
+            onSelectionChange={onSelectionChange}
             dataKey="id"
             tableStyle={{ minWidth: "60rem" }}
             rowClassName={(data) =>
-              selectedArts.some((p) => p.id === data.id)
-                ? "bg-blue-100"
-                : "bg-white"
+              selectedIds.has(data.id) ? "bg-blue-100" : "bg-white"
             }
           >
             {!rowClick && (
@@ -146,7 +156,6 @@ export default function App() {
                         />
                       </div>
                     </OverlayPanel>
-
                     <ChevronDown
                       size={18}
                       className="cursor-pointer relative left-[50px]"
