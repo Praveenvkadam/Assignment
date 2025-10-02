@@ -32,6 +32,7 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const overlayRef = useRef<OverlayPanel>(null);
   const [selectLimit, setSelectLimit] = useState<number>(12);
+
   const currentPage = first / rows + 1;
 
   const fetchArtworks = async (page: number) => {
@@ -82,6 +83,15 @@ export default function App() {
     selectedIds.has(row.id)
   );
 
+  const fetchArtworksPage = async (page: number, pageSize: number) => {
+    const response = await fetch(
+      `https://api.artic.edu/api/v1/artworks?page=${page}&limit=${pageSize}&fields=id`
+    );
+    const data = await response.json();
+    const artworks: ArtObject[] = data.data.map((item: any) => ({ id: item.id } as ArtObject));
+    return { artworks, total: data.pagination.total };
+  };
+
   const handleSelectFilteredRows = async () => {
     if (selectLimit <= 0) return;
     let selected: number[] = [];
@@ -97,15 +107,6 @@ export default function App() {
     selected.slice(0, selectLimit).forEach((id) => newSelectedIds.add(id));
     setSelectedIds(newSelectedIds);
     overlayRef.current?.hide();
-  };
-
-  const fetchArtworksPage = async (page: number, pageSize: number) => {
-    const response = await fetch(
-      `https://api.artic.edu/api/v1/artworks?page=${page}&limit=${pageSize}&fields=id`
-    );
-    const data = await response.json();
-    const artworks: ArtObject[] = data.data.map((item: any) => ({ id: item.id } as ArtObject));
-    return { artworks, total: data.pagination.total };
   };
 
   return (
